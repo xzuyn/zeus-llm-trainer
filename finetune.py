@@ -30,6 +30,7 @@ def train(
     num_train_epochs: int = 3,
     learning_rate: float = 3e-4,
     per_device_train_batch_size: int = 4,
+    per_device_eval_batch_size: int = 4,
     save_and_eval_steps: int = 10,
     warmup_ratio: float = 0.06,
     save_total_limit: int = 20,
@@ -139,6 +140,7 @@ def train(
             f"num_train_epochs: {num_train_epochs}\n"
             f"save_and_eval_steps: {save_and_eval_steps}\n"
             f"per_device_train_batch_size: {per_device_train_batch_size}\n"
+            f"per_device_eval_batch_size: {per_device_eval_batch_size}\n"
             f"gradient accumulation steps: {gradient_accumulation_steps}\n"
             f"global batch_size: {global_batch_size}\n"
             f"warmup_ratio: {warmup_ratio}\n"
@@ -381,6 +383,7 @@ def train(
     # https://huggingface.co/docs/transformers/main_classes/trainer#transformers.Trainer
     args = transformers.TrainingArguments(
         per_device_train_batch_size=per_device_train_batch_size,
+        per_device_eval_batch_size=per_device_eval_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         warmup_ratio=warmup_ratio,  # default 0.06 as recommended by MS LoRA
         num_train_epochs=num_train_epochs,
@@ -493,3 +496,4 @@ class SavePeftModelCallback(transformers.TrainerCallback):
 
 if __name__ == "__main__":
     fire.Fire(train)
+

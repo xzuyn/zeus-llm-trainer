@@ -19,6 +19,7 @@ python finetune.py \
     --lora_alpha 64 \
     --gradient_accumulation_steps 24 \
     --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
     --use_gradient_checkpointing True \
     --group_by_length True \
     --save_total_limit 20 \
