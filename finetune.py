@@ -21,45 +21,52 @@ from utils.prompter import Prompter
 def train(
     # model/data params - required
     base_model: str = "",
-    data_path: str = "dataset.json",
+    data_path: str = "PeanutJar/PeanutButter-Train",
+    eval_path: str = "PeanutJar/PeanutButter-Eval",
+    use_second_set: bool = False,  # if False, split eval set from original training dataset, and `eval_path` will be ignored.
     # HF Trainer params
     output_dir: str = "./lora-alpaca",
-    optim: str = "adamw_torch_fused",
+    optim: str = "paged_adamw_8bit",
     num_train_epochs: int = 3,
     learning_rate: float = 3e-4,
     per_device_train_batch_size: int = 4,
-    save_and_eval_steps: int = 100,
+    save_and_eval_steps: int = 10,
     warmup_ratio: float = 0.06,
-    save_total_limit: int = 5,
-    logging_steps: int = 5,
+    save_total_limit: int = 20,
+    logging_steps: int = 1,
     seed: int = 42,
     max_grad_norm: float = 1.0,
     # faster, but produces an odd training loss curve - recommended to use
-    group_by_length: bool = False,
+    group_by_length: bool = True,
     # use global batch size OR gradient accumulation steps, not both
     # one must NOT be 0
-    gradient_accumulation_steps: int = 0,
+    gradient_accumulation_steps: int = 24,
     # alpaca-lora training hyper/params
     is_finetune: bool = False,
     fsdp_params: str = '',
     global_batch_size: int = 0,
-    cutoff_len: int = 512,
-    val_set_size: int = 2000,
+    cutoff_len: int = 2048,
+    val_set_size: int = 2000,  # set value to 1 if `use_second_set` is True
     train_fp16: bool = False,
     train_bf16: bool = False,
-    train_4bit: bool = False,
-    use_gradient_checkpointing: bool = False,
+    train_4bit: bool = True,
+    use_gradient_checkpointing: bool = True,
     use_flash_attn: bool = False,
     use_xformers: bool = False,
     use_rope: bool = False,
     # lora-specific hyperparams
     is_lora: bool = True,
-    lora_r: int = 8,
-    lora_alpha: int = 16,
+    lora_r: int = 64,
+    lora_alpha: int = 64,
     lora_dropout: float = 0.05,
     lora_target_modules: List[str] = [
+        "gate_proj",
+        "down_proj",
+        "up_proj",
         "q_proj",
+        "k_proj",
         "v_proj",
+        "o_proj"
     ],
     # llm hyperparams
     train_on_inputs: bool = True,  # if False, masks out inputs in loss
@@ -70,7 +77,7 @@ def train(
     wandb_watch: str = "",  # options: false | gradients | all
     wandb_log_model: str = "",  # options: false | true
     resume_from_checkpoint: str = None,  # either training checkpoint or final adapter
-    prompt_template_name: str = "alpaca",  # The prompt template to use, will default to alpaca.
+    prompt_template_name: str = "alpaca_short",  # The prompt template to use, will default to alpaca.
 ):
     warnings.filterwarnings('ignore', category=UserWarning, module='bitsandbytes.autograd._functions')
 
@@ -122,6 +129,7 @@ def train(
             f"Training model with the following params:\n"
             f"base_model: {base_model}\n"
             f"data_path: {data_path}\n"
+            f"eval_path: {eval_path}\n"
             f"output_dir: {output_dir}\n"
             f"training_method: {training_method}\n"
             f"using DDP: {ddp}\n"
@@ -129,6 +137,7 @@ def train(
             f"training_type: {training_type}\n"
             f"learning_rate: {learning_rate}\n"
             f"num_train_epochs: {num_train_epochs}\n"
+            f"save_and_eval_steps: {save_and_eval_steps}\n"
             f"per_device_train_batch_size: {per_device_train_batch_size}\n"
             f"gradient accumulation steps: {gradient_accumulation_steps}\n"
             f"global batch_size: {global_batch_size}\n"
@@ -288,6 +297,12 @@ def train(
         data = load_dataset("json", data_files=data_path)
     else:
         data = load_dataset(data_path)
+    
+    if use_second_set is True:
+        if eval_path.endswith(".json") or eval_path.endswith(".jsonl"):
+            eval_data = load_dataset("json", data_files=eval_path)
+        else:
+            eval_data = load_dataset(eval_path)
 
     if resume_from_checkpoint:
         # Check the available weights and load them
@@ -317,24 +332,31 @@ def train(
         model.print_trainable_parameters()  # Be more transparent about the % of trainable params.
 
     save_to_path = f'./tokenized/{os.path.splitext(data_path)[0]}'
+    if use_second_set is True:
+        save_to_eval = f'./tokenized/{os.path.splitext(eval_path)[0]}'
     if val_set_size > 0:
         if not os.path.exists(save_to_path) and not os.path.exists(f"{save_to_path}_val"):
             print("Tokenizing new dataset split for train and validation")
-            train_val = data["train"].train_test_split(
-                test_size=val_set_size, shuffle=True, seed=42
-            )
-            train_data = (
-                train_val["train"].shuffle().map(generate_and_tokenize_prompt)
-            )
-            val_data = (
-                train_val["test"].shuffle().map(generate_and_tokenize_prompt)
-            )
+            if use_second_set is False:
+                train_val = data["train"].train_test_split(
+                    test_size=val_set_size, shuffle=True, seed=42
+                )
+                val_data = (
+                    train_val["test"].shuffle().map(generate_and_tokenize_prompt)
+                )
+                train_data = (
+                    train_val["train"].shuffle().map(generate_and_tokenize_prompt)
+                )
+            elif use_second_set is True:
+                train_data = data["train"].shuffle().map(generate_and_tokenize_prompt)
+                val_data = eval_data["test"].shuffle().map(generate_and_tokenize_prompt)
+            
             train_data.save_to_disk(save_to_path)
-            val_data.save_to_disk(f"{save_to_path}_val")
+            val_data.save_to_disk(save_to_eval)
         else:
             print("Loading original tokenized train and val datasets")
             train_data = load_from_disk(save_to_path)
-            val_data = load_from_disk(f"{save_to_path}_val")
+            val_data = load_from_disk(save_to_eval)
     else:
         if not os.path.exists(save_to_path):
             print("Tokenizing new dataset")
@@ -363,12 +385,13 @@ def train(
         warmup_ratio=warmup_ratio,  # default 0.06 as recommended by MS LoRA
         num_train_epochs=num_train_epochs,
         learning_rate=learning_rate,
+        lr_scheduler_type="constant_with_warmup",
         fp16=True if not train_bf16 else False,  # mixed precision, bf16 seems like a good option as well
         bf16=train_bf16,
         logging_steps=logging_steps,
         optim=optim,
-        evaluation_strategy="steps" if val_set_size > 0 else "no",
-        save_strategy="steps",
+        evaluation_strategy="step" if val_set_size > 0 else "no",
+        save_strategy="epoch",
         eval_steps=save_and_eval_steps if val_set_size > 0 else None,
         save_steps=save_and_eval_steps,
         output_dir=output_dir,
