@@ -11,19 +11,23 @@ python finetune.py \
     --use_second_set True \
     --prompt_template_name "alpaca_short" \
     --optim "paged_adamw_8bit" \
-    --learning_rate 0.0003 \
-    --num_train_epochs 5 \
-    --train_4bit \
+    --learning_rate 0.0001 \
+    --num_train_epochs 10 \
+    --train_4bit True \
     --cutoff_len 4096 \
     --lora_r 64 \
     --lora_alpha 64 \
-    --gradient_accumulation_steps 24 \
+    --gradient_accumulation_steps 16 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --use_gradient_checkpointing True \
-    --group_by_length True \
-    --save_total_limit 20 \
-    --save_and_eval_steps 10 \
+    --group_by_length False \
+    --save_total_limit 5 \
+    --save_and_eval_steps 5 \
     --val_set_size 1 \
     --logging_steps 1 \
-    --output_dir "./00_output/LLaMa-2-PeanutButter_v19_A-7B-QLoRA"
+    --wandb_project "LLaMa-PeanutButter_v19-7B-QLoRA" \
+    --wandb_run_name "Run 3: Skippy" \
+    --wandb_log_model "false" \
+    --push_to_hub False \
+    --output_dir "./00_output/LLaMa-2-PeanutButter_v19-7B-QLoRA/Run-3-Skippy"
