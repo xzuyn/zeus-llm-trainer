@@ -24,11 +24,14 @@ def train(
     data_path: str = "PeanutJar/PeanutButter-Train",
     eval_path: str = "PeanutJar/PeanutButter-Eval",
     use_second_set: bool = False,  # if False, split eval set from original training dataset, and `eval_path` will be ignored.
+    push_to_hub: bool = False,
+    hub_private_repo: bool = True,
     # HF Trainer params
     output_dir: str = "./lora-alpaca",
     optim: str = "paged_adamw_8bit",
     num_train_epochs: int = 3,
     learning_rate: float = 3e-4,
+    lr_scheduler_type: str = "constant_with_warmups",
     per_device_train_batch_size: int = 4,
     per_device_eval_batch_size: int = 4,
     save_and_eval_steps: int = 10,
@@ -132,11 +135,14 @@ def train(
             f"data_path: {data_path}\n"
             f"eval_path: {eval_path}\n"
             f"output_dir: {output_dir}\n"
+            f"push_to_hub: {push_to_hub}\n"
+            f"hub_private_repo: {hub_private_repo}\n"
             f"training_method: {training_method}\n"
             f"using DDP: {ddp}\n"
             f"optimizer: {optim}\n"
             f"training_type: {training_type}\n"
             f"learning_rate: {learning_rate}\n"
+            f"lr_scheduler_type: {lr_scheduler_type}\n"
             f"num_train_epochs: {num_train_epochs}\n"
             f"save_and_eval_steps: {save_and_eval_steps}\n"
             f"per_device_train_batch_size: {per_device_train_batch_size}\n"
@@ -336,29 +342,24 @@ def train(
     save_to_path = f'./tokenized/{os.path.splitext(data_path)[0]}'
     if use_second_set is True:
         save_to_eval = f'./tokenized/{os.path.splitext(eval_path)[0]}'
-    if val_set_size > 0:
-        if not os.path.exists(save_to_path) and not os.path.exists(f"{save_to_path}_val"):
-            print("Tokenizing new dataset split for train and validation")
-            if use_second_set is False:
-                train_val = data["train"].train_test_split(
-                    test_size=val_set_size, shuffle=True, seed=42
-                )
-                val_data = (
-                    train_val["test"].shuffle().map(generate_and_tokenize_prompt)
-                )
-                train_data = (
-                    train_val["train"].shuffle().map(generate_and_tokenize_prompt)
-                )
-            elif use_second_set is True:
-                train_data = data["train"].shuffle().map(generate_and_tokenize_prompt)
-                val_data = eval_data["test"].shuffle().map(generate_and_tokenize_prompt)
-            
-            train_data.save_to_disk(save_to_path)
-            val_data.save_to_disk(save_to_eval)
-        else:
-            print("Loading original tokenized train and val datasets")
-            train_data = load_from_disk(save_to_path)
-            val_data = load_from_disk(save_to_eval)
+    if val_set_size > 0:  # Removed the data loading cause it doesnt display the values and i have trust issues
+        print("Tokenizing new dataset split for train and validation")
+        if use_second_set is False:
+            train_val = data["train"].train_test_split(
+                test_size=val_set_size, shuffle=True, seed=42
+            )
+            val_data = (
+                train_val["test"].shuffle().map(generate_and_tokenize_prompt)
+            )
+            train_data = (
+                train_val["train"].shuffle().map(generate_and_tokenize_prompt)
+            )
+        elif use_second_set is True:
+            train_data = data["train"].shuffle().map(generate_and_tokenize_prompt)
+            val_data = eval_data["test"].shuffle().map(generate_and_tokenize_prompt)
+
+        train_data.save_to_disk(save_to_path)
+        val_data.save_to_disk(save_to_eval)
     else:
         if not os.path.exists(save_to_path):
             print("Tokenizing new dataset")
@@ -385,10 +386,12 @@ def train(
         per_device_train_batch_size=per_device_train_batch_size,
         per_device_eval_batch_size=per_device_eval_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
+        push_to_hub=push_to_hub,
+        hub_private_repo=hub_private_repo,
         warmup_ratio=warmup_ratio,  # default 0.06 as recommended by MS LoRA
         num_train_epochs=num_train_epochs,
         learning_rate=learning_rate,
-        lr_scheduler_type="constant_with_warmup",
+        lr_scheduler_type=lr_scheduler_type,
         fp16=True if not train_bf16 else False,  # mixed precision, bf16 seems like a good option as well
         bf16=train_bf16,
         logging_steps=logging_steps,
@@ -496,4 +499,3 @@ class SavePeftModelCallback(transformers.TrainerCallback):
 
 if __name__ == "__main__":
     fire.Fire(train)
-
