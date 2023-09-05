@@ -23,7 +23,7 @@ python finetune.py \
     --use_gradient_checkpointing True \
     --group_by_length False \
     --save_total_limit 5 \
-    --save_and_eval_steps 5 \
+    --save_and_eval_epochs 0.05 \
     --val_set_size 1 \
     --logging_steps 1 \
     --wandb_project "LLaMa-PeanutButter_v19-7B-QLoRA" \
