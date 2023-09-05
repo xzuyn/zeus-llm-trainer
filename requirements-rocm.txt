@@ -4,6 +4,8 @@ black
 datasets
 fire
 sentencepiece
+-i https://download.pytorch.org/whl/nightly/rocm5.6
+torch
 einops
 deepspeed
 wandb
