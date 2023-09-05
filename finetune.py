@@ -31,7 +31,7 @@ def train(
     optim: str = "paged_adamw_8bit",
     num_train_epochs: int = 3,
     learning_rate: float = 3e-4,
-    lr_scheduler_type: str = "constant_with_warmups",
+    lr_scheduler_type: str = "constant_with_warmup",
     per_device_train_batch_size: int = 4,
     per_device_eval_batch_size: int = 4,
     save_and_eval_steps: int = 10,
@@ -44,7 +44,7 @@ def train(
     group_by_length: bool = True,
     # use global batch size OR gradient accumulation steps, not both
     # one must NOT be 0
-    gradient_accumulation_steps: int = 24,
+    gradient_accumulation_steps: int = 16,
     # alpaca-lora training hyper/params
     is_finetune: bool = False,
     fsdp_params: str = '',
@@ -379,8 +379,6 @@ def train(
     if fsdp_params == '':
         fsdp_params = False
 
-
-
     # https://huggingface.co/docs/transformers/main_classes/trainer#transformers.Trainer
     args = transformers.TrainingArguments(
         per_device_train_batch_size=per_device_train_batch_size,
@@ -396,8 +394,8 @@ def train(
         bf16=train_bf16,
         logging_steps=logging_steps,
         optim=optim,
-        evaluation_strategy="steps" if val_set_size > 0 else "no",
-        save_strategy="steps",
+        evaluation_strategy="epoch" if val_set_size > 0 else "no",
+        save_strategy="epoch",
         eval_steps=save_and_eval_steps if val_set_size > 0 else None,
         save_steps=save_and_eval_steps,
         output_dir=output_dir,
