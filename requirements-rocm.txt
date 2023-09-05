@@ -4,8 +4,6 @@ black
 datasets
 fire
 sentencepiece
--i https://download.pytorch.org/whl/nightly/rocm5.6
-torch
 einops
 deepspeed
 wandb
@@ -16,3 +14,7 @@ git+https://github.com/huggingface/transformers.git@686c68f64c9d0181bd54d4d2e244
 git+https://github.com/huggingface/peft.git@8c17d556a8fe9522e10d73d7bd3fad46a6ecae14
 
 # git+https://github.com/NVIDIA/TransformerEngine.git
+
+-i https://download.pytorch.org/whl/nightly/rocm5.6
+--pre
+torch
