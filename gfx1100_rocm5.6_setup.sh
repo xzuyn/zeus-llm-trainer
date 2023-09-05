@@ -22,19 +22,19 @@ python --version
 
 # Step 1/4: Installing Requirements
 echo ""
-echo "Step 1/5: Installing Requirements"
+echo "Step 1/4: Installing Requirements"
 echo ""
 pip install -r requirements-rocm.txt
 
 # Step 2/4: Removing Unwanted bitsandbytes Installation
 echo ""
-echo "Step 2/5: Removing Unwanted bitsandbytes Installation"
+echo "Step 2/4: Removing Unwanted bitsandbytes Installation"
 echo ""
 pip uninstall bitsandbytes
 
 # Step 3/4: Cloning the bitsandbytes-rocm Fork's Repo
 echo ""
-echo "Step 3/5: Cloning the bitsandbytes-rocm Fork's Repo"
+echo "Step 3/4: Cloning the bitsandbytes-rocm Fork's Repo"
 echo ""
 cd venv
 git clone https://github.com/arlo-phoenix/bitsandbytes-rocm-5.6.git bitsandbytes
