@@ -50,4 +50,3 @@ pip install .
 pip install scipy  # I think there's a requirements problem somewhere (at least in kohya_ss)
 cd ..
 cd ..
-
