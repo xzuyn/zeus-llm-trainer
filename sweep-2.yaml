@@ -1,0 +1,97 @@
+program: finetune.py
+method: bayes
+metric:
+  name: eval/loss
+  goal: minimize
+parameters:
+  learning_rate:
+    min: 0.00001
+    max: 0.0003
+  lora_r:
+    values:
+      - 4
+      - 8
+      - 16
+      - 32
+      - 64
+  lora_alpha:
+    values:
+      - 4
+      - 8
+      - 16
+      - 32
+      - 64
+  lora_dropout:
+    values:
+      - 0.01
+      - 0.02
+      - 0.03
+      - 0.04
+      - 0.05
+  gradient_accumulation_steps:
+    values:
+      - 1
+      - 2
+      - 4
+      - 8
+      - 12
+      - 16
+  group_by_length:
+    values:
+      - True
+      - False
+  train_on_inputs:
+    values:
+      - True
+      - False
+  lr_scheduler_type:
+    values:
+      - "linear"
+      - "cosine"
+      - "cosine_with_restarts"
+      - "polynomial"
+      - "inverse_sqrt"
+      - "reduce_lr_on_plateau"
+  num_train_epochs:
+    values:
+      - 1
+      - 2
+      - 3
+command:
+  - "python"
+  - ${program}
+  - "--base_model"
+  - "\"meta-llama/Llama-2-7b-hf\""
+  - "--data_path"
+  - "\"PeanutJar/PeanutButter-Train\""
+  - "--eval_path"
+  - "\"PeanutJar/PeanutButter-Eval\""
+  - "--use_second_set"
+  - "True"
+  - "--prompt_template_name"
+  - "\"alpaca_short\""
+  - "--optim"
+  - "\"paged_adamw_8bit\""
+  - "--train_4bit"
+  - "True"
+  - "--cutoff_len"
+  - "4096"
+  - "--per_device_train_batch_size"
+  - "1"
+  - "--per_device_eval_batch_size"
+  - "1"
+  - "--use_gradient_checkpointing"
+  - "True"
+  - "--save_total_limit"
+  - "5"
+  - "--save_and_eval_steps"
+  - "0.05"
+  - "--val_set_size"
+  - "1"
+  - "--logging_steps"
+  - "1"
+  - "--push_to_hub"
+  - "False"
+  - ${args}
+  - "--output_dir"
+  - "\"./00_output/LLaMa-2-PeanutButter_v19-7B-QLoRA/Sweep\""
