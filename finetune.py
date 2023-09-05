@@ -1,6 +1,7 @@
 import os
 import warnings
 from typing import List
+from math import ceil
 
 import fire
 import torch
@@ -34,7 +35,7 @@ def train(
     lr_scheduler_type: str = "constant_with_warmup",
     per_device_train_batch_size: int = 4,
     per_device_eval_batch_size: int = 4,
-    save_and_eval_steps: int = 10,
+    save_and_eval_epochs: int = 0.05,
     warmup_ratio: float = 0.06,
     save_total_limit: int = 20,
     logging_steps: int = 1,
@@ -144,7 +145,7 @@ def train(
             f"learning_rate: {learning_rate}\n"
             f"lr_scheduler_type: {lr_scheduler_type}\n"
             f"num_train_epochs: {num_train_epochs}\n"
-            f"save_and_eval_steps: {save_and_eval_steps}\n"
+            f"save_and_eval_epochs: {save_and_eval_epochs}\n"
             f"per_device_train_batch_size: {per_device_train_batch_size}\n"
             f"per_device_eval_batch_size: {per_device_eval_batch_size}\n"
             f"gradient accumulation steps: {gradient_accumulation_steps}\n"
@@ -370,7 +371,6 @@ def train(
             train_data = load_from_disk(save_to_path)
         val_data = None
 
-
     # if we're finetuning, we don't need the peft model callback
     callbacks = [SavePeftModelCallback]
     if is_finetune:
@@ -378,6 +378,8 @@ def train(
 
     if fsdp_params == '':
         fsdp_params = False
+
+    save_and_eval_epochs_real = ceil((len(train_data) / gradient_accumulation_steps) * save_and_eval_epochs)  # Make work with batch size as well
 
     # https://huggingface.co/docs/transformers/main_classes/trainer#transformers.Trainer
     args = transformers.TrainingArguments(
@@ -394,10 +396,10 @@ def train(
         bf16=train_bf16,
         logging_steps=logging_steps,
         optim=optim,
-        evaluation_strategy="epoch" if val_set_size > 0 else "no",
-        save_strategy="epoch",
-        eval_steps=save_and_eval_steps if val_set_size > 0 else None,
-        save_steps=save_and_eval_steps,
+        evaluation_strategy="steps" if val_set_size > 0 else "no",
+        save_strategy="steps",
+        eval_steps=save_and_eval_epochs_real if val_set_size > 0 else None,
+        save_steps=save_and_eval_epochs_real,
         output_dir=output_dir,
         save_total_limit=save_total_limit,
         load_best_model_at_end=True if val_set_size > 0 else False,
