@@ -24,7 +24,7 @@ python --version
 echo ""
 echo "Step 1/5: Installing Requirements"
 echo ""
-pip install -r requirements.txt
+pip install -r requirements-rocm.txt
 
 # Step 2/4: Removing Unwanted bitsandbytes Installation
 echo ""
