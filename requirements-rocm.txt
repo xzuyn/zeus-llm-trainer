@@ -1,0 +1,16 @@
+appdirs
+loralib
+black
+datasets
+fire
+sentencepiece
+einops
+deepspeed
+wandb
+deepspeed
+# gradio
+git+https://github.com/huggingface/accelerate.git@e2ae254008061b3e53fc1c97f88d65743a857e75
+git+https://github.com/huggingface/transformers.git@686c68f64c9d0181bd54d4d2e2446543c3eca1fa
+git+https://github.com/huggingface/peft.git@8c17d556a8fe9522e10d73d7bd3fad46a6ecae14
+
+# git+https://github.com/NVIDIA/TransformerEngine.git
