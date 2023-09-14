@@ -36,7 +36,7 @@ def train(
     per_device_train_batch_size: int = 4,
     per_device_eval_batch_size: int = 4,
     save_and_eval_epochs: int = 0.05,
-    warmup_ratio: float = 0.06,
+    warmup_ratio: float = 0.05,
     save_total_limit: int = 20,
     logging_steps: int = 1,
     seed: int = 42,
@@ -65,12 +65,12 @@ def train(
     lora_alpha: int = 64,
     lora_dropout: float = 0.05,
     lora_target_modules: List[str] = [
-        "gate_proj",
-        "down_proj",
-        "up_proj",
         "q_proj",
-        "k_proj",
+        "down_proj",
+        "gate_proj",
         "v_proj",
+        "k_proj",
+        "up_proj",
         "o_proj"
     ],
     # llm hyperparams
@@ -357,7 +357,10 @@ def train(
             )
         elif use_second_set is True:
             train_data = data["train"].shuffle().map(generate_and_tokenize_prompt)
-            val_data = eval_data["test"].shuffle().map(generate_and_tokenize_prompt)
+            if eval_path.endswith(".json") or eval_path.endswith(".jsonl"):
+                val_data = eval_data["train"].shuffle().map(generate_and_tokenize_prompt)
+            else:
+                val_data = eval_data["test"].shuffle().map(generate_and_tokenize_prompt)
 
         train_data.save_to_disk(save_to_path)
         val_data.save_to_disk(save_to_eval)
@@ -379,7 +382,7 @@ def train(
     if fsdp_params == '':
         fsdp_params = False
 
-    save_and_eval_epochs_real = ceil((len(train_data) / gradient_accumulation_steps) * save_and_eval_epochs)  # Make work with batch size as well
+    save_and_eval_steps = ceil((len(train_data) / gradient_accumulation_steps) * save_and_eval_epochs)  # Make work with batch size as well
 
     # https://huggingface.co/docs/transformers/main_classes/trainer#transformers.Trainer
     args = transformers.TrainingArguments(
@@ -398,11 +401,13 @@ def train(
         optim=optim,
         evaluation_strategy="steps" if val_set_size > 0 else "no",
         save_strategy="steps",
-        eval_steps=save_and_eval_epochs_real if val_set_size > 0 else None,
-        save_steps=save_and_eval_epochs_real,
+        eval_steps=save_and_eval_steps if val_set_size > 0 else None,
+        save_steps=save_and_eval_steps,
         output_dir=output_dir,
         save_total_limit=save_total_limit,
         load_best_model_at_end=True if val_set_size > 0 else False,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
         ddp_find_unused_parameters=False if ddp else None,
         group_by_length=group_by_length,
         # ddp_timeout=1800,
